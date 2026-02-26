@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 15, 23, 42;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: #d1d5db; } /* gray-300 */
+  50% { border-color: #026d5f; } /* red-500 */
+}
+
+.pulse-border {
+  animation: pulse-border 2s infinite;
+}

@@ -1,0 +1,2503 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [postgis, vector]
+}
+
+model address {
+  id             String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  person_id      String? @db.Uuid
+  line_1         String? @db.VarChar
+  line_2         String? @db.VarChar
+  city           String? @db.VarChar
+  state_province String? @db.VarChar
+  zip_geo        String? @db.VarChar
+  country        String? @db.VarChar
+  person         person? @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ai_bias_evaluation {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  run_id            String?            @db.Uuid
+  bias_dimension    String?            @db.VarChar
+  bias_score        Float?
+  created_at        DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime           @default(now()) @db.Timestamptz(6)
+  ai_evaluation_run ai_evaluation_run? @relation(fields: [run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ai_candidate_score {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  run_id               String?                @db.Uuid
+  application_id       String?                @db.Uuid
+  candidate_score      Float?
+  explainability       Json?
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  application          application?           @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ai_evaluation_run    ai_evaluation_run?     @relation(fields: [run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ai_decision_override ai_decision_override[]
+}
+
+model ai_decision_override {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id     String?             @db.Uuid
+  score_id           String?             @db.Uuid
+  app_user_id        String?             @db.Uuid
+  reason             String?
+  overridden_at      DateTime?           @default(now()) @db.Timestamptz(6)
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime            @default(now()) @db.Timestamptz(6)
+  app_user           app_user?           @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  application        application?        @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ai_candidate_score ai_candidate_score? @relation(fields: [score_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ai_embedding_store {
+  id                String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  ref_type          String?            @db.VarChar
+  ref_id            String?            @db.Uuid
+  embedding_vector  String?            @db.VarChar
+  model_id          String?            @db.Uuid
+  created_at        DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime           @default(now()) @db.Timestamptz(6)
+  ai_model_registry ai_model_registry? @relation(fields: [model_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ai_evaluation_run {
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id               String?                   @db.Uuid
+  model_version           String?                   @db.VarChar
+  executed_at             DateTime?                 @default(now()) @db.Timestamptz(6)
+  ai_bias_evaluation      ai_bias_evaluation[]
+  ai_candidate_score      ai_candidate_score[]
+  tenant                  tenant?                   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ai_job_match            ai_job_match[]
+  ai_model_input_snapshot ai_model_input_snapshot[]
+}
+
+model ai_feedback_loop {
+  id               String            @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  inference_id     String?           @db.Uuid
+  app_user_id      String?           @db.Uuid
+  is_accurate      Boolean?
+  corrected_data   Json?
+  user_comment     String?
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime          @default(now()) @db.Timestamptz(6)
+  app_user         app_user?         @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ai_inference_log ai_inference_log? @relation(fields: [inference_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ai_inference_log {
+  id                 String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id          String?            @db.Uuid
+  model_id           String?            @db.Uuid
+  task_type_id       String?            @db.Uuid
+  input_data_summary String?
+  output_data        Json?
+  token_usage_input  Int?
+  token_usage_output Int?
+  latency_ms         Int?
+  status             String?            @db.VarChar
+  error_message      String?
+  created_at         DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime           @default(now()) @db.Timestamptz(6)
+  ai_feedback_loop   ai_feedback_loop[]
+  ai_model_registry  ai_model_registry? @relation(fields: [model_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ai_task_type       ai_task_type?      @relation(fields: [task_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant             tenant?            @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ai_job_match {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  run_id            String?            @db.Uuid
+  job_id            String?            @db.Uuid
+  job_match_score   Float?
+  ai_evaluation_run ai_evaluation_run? @relation(fields: [run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model ai_match_result {
+  id                   String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  job_id               String?            @db.Uuid
+  candidate_profile_id String?            @db.Uuid
+  ai_job_match_score   Decimal?           @db.Decimal
+  explanation_text     String?
+  match_metadata       Json?
+  model_id             String?            @db.Uuid
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @default(now()) @db.Timestamptz(6)
+  candidate_profile    candidate_profile? @relation(fields: [candidate_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ai_model_registry    ai_model_registry? @relation(fields: [model_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ai_model_input_snapshot {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  run_id            String?            @db.Uuid
+  input_hash        String?            @db.VarChar
+  input_metadata    Json?
+  created_at        DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime           @default(now()) @db.Timestamptz(6)
+  ai_evaluation_run ai_evaluation_run? @relation(fields: [run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ai_model_registry {
+  id                 String               @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name               String?              @db.VarChar
+  provider           String?              @db.VarChar
+  version_tag        String?              @db.VarChar
+  is_active          Boolean?
+  configuration_json Json?
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  ai_embedding_store ai_embedding_store[]
+  ai_inference_log   ai_inference_log[]
+  ai_match_result    ai_match_result[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ai_task_type {
+  id                      String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name                    String?            @db.VarChar
+  default_prompt_template String?
+  ai_inference_log        ai_inference_log[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model api_key {
+  id           String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id    String?   @db.Uuid
+  app_user_id  String?   @db.Uuid
+  key_name     String?   @db.VarChar
+  key_prefix   String?   @db.VarChar
+  key_hash     String?   @db.VarChar
+  scopes       Json?
+  expires_at   DateTime? @db.Timestamptz(6)
+  last_used_at DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  is_revoked   Boolean?  @default(false)
+  app_user     app_user? @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant       tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model app_user {
+  id                                                           String                         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  identity_id                                                  Int?
+  tenant_id                                                    String?                        @db.Uuid
+  person_id                                                    String?                        @db.Uuid
+  user_status_id                                               String?                        @db.Uuid
+  email                                                        String?                        @db.VarChar
+  username                                                     String?                        @db.VarChar
+  role                                                         String?                        @db.VarChar
+  timezone                                                     String?                        @db.VarChar
+  created_at                                                   DateTime                       @default(now()) @db.Timestamptz(6)
+  updated_at                                                   DateTime                       @default(now()) @db.Timestamptz(6)
+  ai_decision_override                                         ai_decision_override[]
+  ai_feedback_loop                                             ai_feedback_loop[]
+  api_key                                                      api_key[]
+  identity                                                     identity?                      @relation(fields: [identity_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  person                                                       person?                        @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant                                                       tenant?                        @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_status                                                  user_status?                   @relation(fields: [user_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  application_note                                             application_note[]
+  application_score                                            application_score[]
+  application_status_history                                   application_status_history[]
+  audit_change_log                                             audit_change_log[]
+  auth_credential                                              auth_credential[]
+  candidate_contact_info                                       candidate_contact_info[]
+  candidate_education                                          candidate_education[]
+  candidate_experience                                         candidate_experience[]
+  candidate_language                                           candidate_language[]
+  candidate_license                                            candidate_license[]
+  candidate_personal_info                                      candidate_personal_info[]
+  candidate_preferences                                        candidate_preferences[]
+  candidate_profile                                            candidate_profile[]
+  candidate_reference                                          candidate_reference[]
+  candidate_skill                                              candidate_skill[]
+  candidate_tag                                                candidate_tag[]
+  data_export_log                                              data_export_log[]
+  hiring_workflow_hiring_workflow_updated_by_user_idToapp_user hiring_workflow[]              @relation("hiring_workflow_updated_by_user_idToapp_user")
+  integration_audit_log                                        integration_audit_log[]
+  interview_availability                                       interview_availability[]
+  interview_calendar_sync                                      interview_calendar_sync[]
+  interview_panel_member                                       interview_panel_member[]
+  interview_reschedule_history                                 interview_reschedule_history[]
+  interview_reschedule_log                                     interview_reschedule_log[]
+  interview_score                                              interview_score[]
+  interviewer                                                  interviewer[]
+  interviewer_assignment                                       interviewer_assignment[]
+  job_category_selection                                       job_category_selection[]
+  job_document                                                 job_document[]
+  job_function_selection                                       job_function_selection[]
+  job_template                                                 job_template[]
+  login_attempt                                                login_attempt[]
+  login_session                                                login_session[]
+  mfa_config                                                   mfa_config[]
+  notification_log                                             notification_log[]
+  oauth_connection                                             oauth_connection[]
+  offer_approval_record                                        offer_approval_record[]
+  password_reset_token                                         password_reset_token[]
+  profile_clone_log                                            profile_clone_log[]
+  search_audit                                                 search_audit[]
+  sensitive_access_log                                         sensitive_access_log[]
+  tenant_candidate                                             tenant_candidate[]
+  user_preference                                              user_preference?
+  user_role                                                    user_role[]
+  workflow_status_transition                                   workflow_status_transition[]
+
+  @@unique([email, tenant_id], map: "idx_user_email_tenant")
+  @@index([created_at], map: "idx_user_created_at")
+  @@index([identity_id], map: "idx_user_identity")
+  @@index([person_id], map: "idx_user_person")
+  @@index([tenant_id, user_status_id], map: "idx_user_status_tenant")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model application {
+  id                         String                       @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id                  String?                      @db.Uuid
+  job_id                     String?                      @db.Uuid
+  candidate_profile_id       String?                      @db.Uuid
+  workflow_id                Int?
+  current_workflow_status_id Int?
+  application_date           DateTime?                    @db.Timestamptz(6)
+  source_channel             String?                      @db.VarChar
+  is_withdrawn               Boolean?
+  withdrawal_reason          String?
+  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  ai_candidate_score         ai_candidate_score[]
+  ai_decision_override       ai_decision_override[]
+  candidate_profile          candidate_profile?           @relation(fields: [candidate_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_status            workflow_status?             @relation(fields: [current_workflow_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant                     tenant?                      @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  hiring_workflow            hiring_workflow?             @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  application_answer         application_answer[]
+  application_attachment     application_attachment[]
+  application_note           application_note[]
+  application_score          application_score[]
+  application_status_history application_status_history[]
+  application_tag            application_tag[]
+  interview_loop             interview_loop[]
+  interview_round            interview_round[]
+  offer                      offer[]
+
+  @@index([is_withdrawn], map: "idx_app_active_only")
+  @@index([candidate_profile_id], map: "idx_app_candidate")
+  @@index([job_id, current_workflow_status_id], map: "idx_app_job_pipeline")
+  @@index([tenant_id, application_date], map: "idx_app_tenant_date")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model application_answer {
+  id             String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  application_id String?       @db.Uuid
+  question_id    String?       @db.Uuid
+  answer_text    String?
+  answer_json    Json?
+  is_qualified   Boolean?
+  created_at     DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime      @default(now()) @db.Timestamptz(6)
+  application    application?  @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_question   job_question? @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model application_attachment {
+  id              String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  application_id  String?       @db.Uuid
+  doc_id          String?       @db.Uuid
+  attachment_type String?       @db.VarChar
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  application     application?  @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_document    job_document? @relation(fields: [doc_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model application_note {
+  id             String       @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  application_id String?      @db.Uuid
+  author_id      String?      @db.Uuid
+  note_text      String?
+  is_private     Boolean?
+  created_at     DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime     @default(now()) @db.Timestamptz(6)
+  application    application? @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user       app_user?    @relation(fields: [author_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model application_score {
+  id                String       @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  application_id    String?      @db.Uuid
+  score_type        String?      @db.VarChar
+  score_value       Decimal?     @db.Decimal
+  max_score         Decimal?     @db.Decimal
+  scored_by_user_id String?      @db.Uuid
+  model_version     String?      @db.VarChar
+  created_at        DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime     @default(now()) @db.Timestamptz(6)
+  application       application? @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user          app_user?    @relation(fields: [scored_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model application_status_history {
+  id                 BigInt           @id @default(autoincrement())
+  application_id     String?          @db.Uuid
+  workflow_status_id Int?
+  changed_at         DateTime?        @db.Timestamptz(6)
+  changed_by_user_id String?          @db.Uuid
+  comment            String?
+  application        application?     @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user           app_user?        @relation(fields: [changed_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_status    workflow_status? @relation(fields: [workflow_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model application_tag {
+  id             String       @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  application_id String?      @db.Uuid
+  tag_name       String?      @db.VarChar
+  created_at     DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime     @default(now()) @db.Timestamptz(6)
+  application    application? @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model area_code {
+  id             Int             @id @default(autoincrement())
+  area_number    String?         @db.VarChar(3)
+  state_id       Int?
+  region         String?         @db.VarChar
+  timezone       String?         @db.VarChar
+  is_active      Boolean?        @default(true)
+  state_province state_province? @relation(fields: [state_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  zip_geo        zip_geo[]
+
+  @@unique([area_number, state_id], map: "area_code_area_number_state_id_idx")
+  @@index([state_id])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model audit_change_log {
+  id             BigInt    @id
+  tenant_id      String?   @db.Uuid
+  app_user_id    String?   @db.Uuid
+  app_user_type  String?   @db.VarChar
+  entity_type    String?   @db.VarChar
+  entity_id      String?   @db.VarChar
+  action_type    String?   @db.VarChar
+  old_values     Json?
+  new_values     Json?
+  changed_fields Json?
+  request_id     String?   @db.Uuid
+  ip_address     String?   @db.VarChar
+  user_agent     String?
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @default(now()) @db.Timestamptz(6)
+  occurred_at    DateTime? @default(now()) @db.Timestamptz(6)
+  app_user       app_user? @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant         tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([request_id], map: "idx_audit_request_id")
+  @@index([tenant_id, entity_type, entity_id, occurred_at(sort: Desc)], map: "idx_audit_tenant_entity")
+  @@index([tenant_id, occurred_at(sort: Desc)], map: "idx_audit_tenant_occurred_at")
+  @@index([tenant_id, app_user_id, occurred_at(sort: Desc)], map: "idx_audit_tenant_user_occurred")
+}
+
+model auth_credential {
+  credential_id String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  app_user_id   String?   @db.Uuid
+  provider      String?   @db.VarChar
+  identifier    String?   @db.VarChar
+  app_user      app_user? @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model auth_event_log {
+  id             BigInt           @id @default(autoincrement())
+  tenant_id      String?          @db.Uuid
+  identity_id    Int?
+  event_type     auth_event_type?
+  status         auth_status?
+  failure_reason String?
+  ip_address     String?          @db.Inet
+  user_agent     String?
+  session_id     String?          @db.Uuid
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime         @default(now()) @db.Timestamptz(6)
+  occurred_at    DateTime?        @default(now()) @db.Timestamptz(6)
+  identity       identity?        @relation(fields: [identity_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  login_session  login_session?   @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant         tenant?          @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([ip_address])
+  @@index([session_id])
+  @@index([tenant_id, occurred_at])
+}
+
+model candidate_consent_log {
+  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  person_id   String?   @db.Uuid
+  tenant_id   String?   @db.Uuid
+  purpose     String?   @db.VarChar
+  granted     Boolean?
+  recorded_at DateTime? @db.Timestamptz(6)
+  person      person?   @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant      tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model candidate_contact_info {
+  id                   Int                @id @default(autoincrement())
+  candidate_profile_id String?            @db.Uuid
+  notification_pref    String?            @db.VarChar
+  first_name           String?            @db.VarChar
+  middle_name          String?            @db.VarChar
+  last_name            String?            @db.VarChar
+  primary_phone        String?            @db.VarChar
+  primary_phone_ext    String?            @db.VarChar
+  alt_phone            String?            @db.VarChar
+  alt_phone_ext        String?            @db.VarChar
+  address_line_1       String?            @db.VarChar
+  address_line_2       String?            @db.VarChar
+  city                 String?            @db.VarChar
+  state_province       String?            @db.VarChar
+  zip_geo              String?            @db.VarChar
+  country              String?            @db.VarChar
+  linkedin_url         String?
+  portfolio_url        String?
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_by           String?            @db.Uuid
+  deleted_at           DateTime?          @db.Timestamptz(6)
+  candidate_profile    candidate_profile? @relation(fields: [candidate_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user             app_user?          @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model candidate_data_source {
+  id                String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  profile_id        String?            @db.Uuid
+  source_type       String?            @db.VarChar
+  candidate_profile candidate_profile? @relation(fields: [profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model candidate_education {
+  id                   Int                @id @default(autoincrement())
+  candidate_profile_id String?            @db.Uuid
+  graduated            Boolean?
+  gpa                  Decimal?           @db.Decimal(3, 2)
+  school_name          String?            @db.VarChar
+  major                String?            @db.VarChar
+  minor                String?            @db.VarChar
+  degree_type          String?            @db.VarChar
+  units_completed      Int?
+  unit_type            String?            @db.VarChar
+  start_month          Int?
+  start_year           Int?
+  end_month            Int?
+  end_year             Int?
+  city                 String?            @db.VarChar
+  state_province       String?            @db.VarChar
+  zip_geo              String?            @db.VarChar
+  country              String?            @db.VarChar
+  school_website       String?
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_by           String?            @db.Uuid
+  deleted_at           DateTime?          @db.Timestamptz(6)
+  candidate_profile    candidate_profile? @relation(fields: [candidate_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user             app_user?          @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model candidate_experience {
+  id                   Int                @id @default(autoincrement())
+  candidate_profile_id String?            @db.Uuid
+  job_title            String?            @db.VarChar
+  agency_institution   String?            @db.VarChar
+  location_text        String?            @db.VarChar
+  is_current           Boolean?
+  may_contact          Boolean?
+  supervisor_name      String?            @db.VarChar
+  supervisor_title     String?            @db.VarChar
+  start_date           DateTime?          @db.Date
+  end_date             DateTime?          @db.Date
+  description          String?
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_by           String?            @db.Uuid
+  deleted_at           DateTime?          @db.Timestamptz(6)
+  candidate_profile    candidate_profile? @relation(fields: [candidate_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user             app_user?          @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model candidate_language {
+  id                   Int                @id @default(autoincrement())
+  candidate_profile_id String?            @db.Uuid
+  language_name        String?            @db.VarChar
+  proficiency          String?            @db.VarChar
+  can_speak            Boolean?
+  can_read             Boolean?
+  can_write            Boolean?
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_by           String?            @db.Uuid
+  deleted_at           DateTime?          @db.Timestamptz(6)
+  candidate_profile    candidate_profile? @relation(fields: [candidate_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user             app_user?          @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model candidate_license {
+  id                   Int                @id @default(autoincrement())
+  candidate_profile_id String?            @db.Uuid
+  issuing_body         String?            @db.VarChar
+  license_number       String?            @db.VarChar
+  license_name         String?            @db.VarChar
+  issued_date          DateTime?          @db.Date
+  expiration_date      DateTime?          @db.Date
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_by           String?            @db.Uuid
+  deleted_at           DateTime?          @db.Timestamptz(6)
+  candidate_profile    candidate_profile? @relation(fields: [candidate_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user             app_user?          @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model candidate_personal_info {
+  id                   Int                @id @default(autoincrement())
+  candidate_profile_id String?            @db.Uuid
+  is_authorized_us     Boolean?
+  requires_visa        Boolean?
+  has_driver_license   Boolean?
+  dl_number            String?            @db.VarChar
+  dl_state             String?            @db.VarChar
+  dl_class             String?            @db.VarChar
+  highest_edu_level    String?            @db.VarChar
+  veteran_status       String?            @db.VarChar
+  disability_status    String?            @db.VarChar
+  race_ethnicity       String?            @db.VarChar
+  gender               String?            @db.VarChar
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_by           String?            @db.Uuid
+  deleted_at           DateTime?          @db.Timestamptz(6)
+  candidate_profile    candidate_profile? @relation(fields: [candidate_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user             app_user?          @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model candidate_preferences {
+  id                    Int                @id @default(autoincrement())
+  candidate_id          String?            @db.Uuid
+  comp_type             String?            @db.VarChar
+  min_acceptable_amount Decimal?           @db.Decimal(15, 2)
+  looking_for_types     Json?
+  willing_to_accept     Json?
+  preferred_work_hours  String?            @db.VarChar
+  relocation_status     String?            @db.VarChar
+  career_goal           String?            @db.VarChar
+  created_at            DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime           @default(now()) @db.Timestamptz(6)
+  updated_by            String?            @db.Uuid
+  deleted_at            DateTime?          @db.Timestamptz(6)
+  candidate_profile     candidate_profile? @relation(fields: [candidate_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user              app_user?          @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model candidate_profile {
+  id                                                                       String                        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id                                                                String?                       @db.Uuid
+  person_id                                                                String?                       @db.Uuid
+  profile_name                                                             String?                       @db.VarChar
+  profile_order                                                            Int?
+  is_primary                                                               Boolean?
+  is_discoverable                                                          Boolean?
+  is_actively_looking                                                      Boolean?
+  candidate_status                                                         Boolean?
+  persona_embedding                                                        String?                       @db.VarChar
+  champion_signals                                                         Json?
+  total_years_exp                                                          Decimal?                      @db.Decimal
+  internal_notes                                                           String?
+  created_at                                                               DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                                                               DateTime                      @default(now()) @db.Timestamptz(6)
+  deleted_by_app_user_id                                                   String?                       @db.Uuid
+  profile_snapshot                                                         Json?
+  ai_match_result                                                          ai_match_result[]
+  application                                                              application[]
+  candidate_contact_info                                                   candidate_contact_info[]
+  candidate_data_source                                                    candidate_data_source[]
+  candidate_education                                                      candidate_education[]
+  candidate_experience                                                     candidate_experience[]
+  candidate_language                                                       candidate_language[]
+  candidate_license                                                        candidate_license[]
+  candidate_personal_info                                                  candidate_personal_info[]
+  candidate_preferences                                                    candidate_preferences[]
+  app_user                                                                 app_user?                     @relation(fields: [deleted_by_app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  person                                                                   person?                       @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant                                                                   tenant?                       @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  candidate_reference                                                      candidate_reference[]
+  candidate_skill                                                          candidate_skill[]
+  candidate_supplemental_info                                              candidate_supplemental_info[]
+  candidate_tag                                                            candidate_tag[]
+  profile_clone_log_profile_clone_log_new_profile_idTocandidate_profile    profile_clone_log[]           @relation("profile_clone_log_new_profile_idTocandidate_profile")
+  profile_clone_log_profile_clone_log_source_profile_idTocandidate_profile profile_clone_log[]           @relation("profile_clone_log_source_profile_idTocandidate_profile")
+  sensitive_access_log                                                     sensitive_access_log[]
+
+  @@index([tenant_id, total_years_exp], map: "idx_candidate_discovery")
+  @@index([champion_signals], map: "idx_champion_signals_jsonb", type: Gin)
+  @@index([tenant_id, is_primary], map: "idx_primary_profile_search")
+  @@index([tenant_id, created_at], map: "idx_recent_candidates")
+  @@index([tenant_id, person_id], map: "idx_tenant_person_lookup")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model candidate_reference {
+  id                Int                @id @default(autoincrement())
+  candidate_id      String?            @db.Uuid
+  first_name        String?            @db.VarChar
+  last_name         String?            @db.VarChar
+  honorific         String?            @db.VarChar
+  title             String?            @db.VarChar
+  relationship      String?            @db.VarChar
+  agency_company    String?            @db.VarChar
+  phone_number      String?            @db.VarChar
+  email_address     String?            @db.VarChar
+  created_at        DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime           @default(now()) @db.Timestamptz(6)
+  updated_by        String?            @db.Uuid
+  deleted_at        DateTime?          @db.Timestamptz(6)
+  candidate_profile candidate_profile? @relation(fields: [candidate_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user          app_user?          @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model candidate_skill {
+  id                   Int                @id @default(autoincrement())
+  candidate_profile_id String?            @db.Uuid
+  skill_name           String?            @db.VarChar
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_by           String?            @db.Uuid
+  deleted_at           DateTime?          @db.Timestamptz(6)
+  candidate_profile    candidate_profile? @relation(fields: [candidate_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user             app_user?          @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model candidate_status {
+  id                 String               @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id          String?              @db.Uuid
+  name               String?              @db.VarChar
+  order_index        Int?
+  tenant             tenant?              @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  validation_profile validation_profile[]
+}
+
+model candidate_supplemental_info {
+  id                   String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  candidate_profile_id String?            @db.Uuid
+  useful_information   String?
+  candidate_profile    candidate_profile? @relation(fields: [candidate_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model candidate_tag {
+  id                    String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  profile_id            String?            @db.Uuid
+  tag_name              String?            @db.VarChar
+  tagged_by_app_user_id String?            @db.Uuid
+  candidate_profile     candidate_profile? @relation(fields: [profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user              app_user?          @relation(fields: [tagged_by_app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model city {
+  id             Int            @id @default(autoincrement())
+  city_name      String         @db.VarChar
+  state_id       Int
+  county_id      Int?
+  county         county?        @relation(fields: [county_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  state_province state_province @relation(fields: [state_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  zip_geo        zip_geo[]
+
+  @@unique([state_id, city_name], map: "city_state_id_city_name_idx")
+  @@index([county_id])
+}
+
+model country {
+  id             String           @id @db.VarChar(3)
+  name           String           @unique @db.VarChar
+  state_province state_province[]
+}
+
+model county {
+  id             Int            @id @default(autoincrement())
+  county_name    String         @db.VarChar
+  state_id       Int
+  city           city[]
+  state_province state_province @relation(fields: [state_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  zip_geo        zip_geo[]
+
+  @@unique([state_id, county_name], map: "county_state_id_county_name_idx")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model data_export_log {
+  id              String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id       String?   @db.Uuid
+  app_user_id     String?   @db.Uuid
+  export_type     String?   @db.VarChar
+  filter_criteria Json?
+  record_count    Int?
+  file_name       String?   @db.VarChar
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+  app_user        app_user? @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant          tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model department {
+  id           String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id    String?        @db.Uuid
+  name         String?        @db.VarChar
+  is_deleted   Boolean?
+  tenant       tenant?        @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job          job[]
+  job_template job_template[]
+}
+
+model encrypted_field_metadata {
+  id                 String              @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  table_name         String?             @db.VarChar
+  column_name        String?             @db.VarChar
+  kps_id             String?             @db.Uuid
+  encryption_key_map encryption_key_map? @relation(fields: [kps_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model encryption_key_map {
+  id                       String                     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id                String?                    @db.Uuid
+  key_reference            String?                    @db.VarChar
+  algorithm                String?                    @db.VarChar
+  rotated_at               DateTime?                  @db.Timestamptz(6)
+  encrypted_field_metadata encrypted_field_metadata[]
+  tenant                   tenant?                    @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model external_job_board {
+  id                String              @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name              String?             @db.VarChar
+  api_endpoint      String?             @db.VarChar
+  auth_type         String?             @db.VarChar
+  logo_url          String?             @db.VarChar
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime            @default(now()) @db.Timestamptz(6)
+  job_board_posting job_board_posting[]
+}
+
+model global_config {
+  id         String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id  String? @db.Uuid
+  config_key String? @db.VarChar
+  value      String?
+  value_json Json?
+  tenant     tenant? @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model hiring_workflow {
+  id                                                    Int                          @id @default(autoincrement())
+  tenant_id                                             String?                      @db.Uuid
+  name                                                  String?                      @db.VarChar
+  is_default                                            Boolean?
+  created_at                                            DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                                            DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_by_user_id                                    String?                      @db.Uuid
+  application                                           application[]
+  tenant                                                tenant?                      @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user_hiring_workflow_updated_by_user_idToapp_user app_user?                    @relation("hiring_workflow_updated_by_user_idToapp_user", fields: [updated_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job                                                   job[]
+  workflow_stage                                        workflow_stage[]
+  workflow_status_transition                            workflow_status_transition[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model identity {
+  id                          Int                           @id @default(autoincrement())
+  email                       String?                       @unique @db.VarChar
+  password_hash               String?                       @db.VarChar
+  mfa_enabled                 Boolean?
+  mfa_secret                  String?                       @db.VarChar
+  last_login_at               DateTime?                     @db.Timestamptz(6)
+  locked_until                DateTime?                     @db.Timestamptz(6)
+  failed_attempts             Int?
+  created_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  app_user                    app_user[]
+  auth_event_log              auth_event_log[]
+  identity_password_history   identity_password_history[]
+  identity_provider           identity_provider[]
+  identity_verification_token identity_verification_token[]
+}
+
+model identity_password_history {
+  id            Int       @id @default(autoincrement())
+  identity_id   Int?
+  password_hash String?   @db.VarChar
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime  @default(now()) @db.Timestamptz(6)
+  identity      identity? @relation(fields: [identity_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model identity_provider {
+  id               Int       @id @default(autoincrement())
+  identity_id      Int?
+  provider_name    String?   @db.VarChar
+  provider_subject String?   @db.VarChar
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  identity         identity? @relation(fields: [identity_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model identity_verification_token {
+  id          Int       @id @default(autoincrement())
+  identity_id Int?
+  token_hash  String?   @db.VarChar
+  token_type  String?   @db.VarChar
+  expires_at  DateTime? @db.Timestamptz(6)
+  consumed_at DateTime? @db.Timestamptz(6)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @default(now()) @db.Timestamptz(6)
+  identity    identity? @relation(fields: [identity_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_audit_log {
+  id                 BigInt              @id @default(autoincrement())
+  tenant_id          String?             @db.Uuid
+  integration_id     String?             @db.Uuid
+  app_user_id        String?             @db.Uuid
+  change_type        String?             @db.VarChar
+  metadata           Json?
+  ip_address         String?             @db.VarChar
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime            @default(now()) @db.Timestamptz(6)
+  app_user           app_user?           @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant_integration tenant_integration? @relation(fields: [integration_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant             tenant?             @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model integration_category {
+  id                   String                 @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name                 String                 @db.VarChar
+  code                 String                 @unique @db.VarChar
+  description          String?
+  is_active            Boolean                @default(true)
+  display_order        Int?
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  integration_provider integration_provider[]
+
+  @@index([display_order])
+  @@index([is_active])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_entity_xref {
+  id                   String              @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id            String?             @db.Uuid
+  integration_id       String?             @db.Uuid
+  internal_entity_type String?             @db.VarChar
+  internal_entity_id   String?             @db.Uuid
+  external_entity_id   String?             @db.VarChar
+  last_synced_at       DateTime?           @db.Timestamptz(6)
+  created_at           DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime            @default(now()) @db.Timestamptz(6)
+  tenant_integration   tenant_integration? @relation(fields: [integration_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant               tenant?             @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id, internal_entity_id, external_entity_id], map: "idx_xref_lookup")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_field_map {
+  id                    String              @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_integration_id String?             @db.Uuid
+  internal_field_name   String?             @db.VarChar
+  external_field_name   String?             @db.VarChar
+  transformation_logic  String?             @db.VarChar
+  tenant_integration    tenant_integration? @relation(fields: [tenant_integration_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_health_check {
+  id                   String                @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  provider_id          String?               @db.Uuid
+  check_type           String?               @db.VarChar
+  is_passing           Boolean?
+  latency_ms           Int?
+  checked_at           DateTime?             @default(now()) @db.Timestamptz(6)
+  created_at           DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime              @default(now()) @db.Timestamptz(6)
+  integration_provider integration_provider? @relation(fields: [provider_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_provider {
+  id                                  String                                @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name                                String?                               @db.VarChar
+  category_id                         String?                               @db.Uuid
+  documentation_url                   String?                               @db.VarChar
+  api_version                         String?                               @db.VarChar
+  is_active                           Boolean?                              @default(true)
+  integration_health_check            integration_health_check[]
+  integration_category                integration_category?                 @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  integration_quota                   integration_quota[]
+  integration_transformation_template integration_transformation_template[]
+  marketplace_extension               marketplace_extension[]
+  provider_entitlement                provider_entitlement[]
+  tenant_integration                  tenant_integration[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_quota {
+  id                      String                @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  provider_id             String?               @db.Uuid
+  tier_name               String?               @db.VarChar
+  max_requests_per_minute Int?
+  max_monthly_calls       Int?
+  integration_provider    integration_provider? @relation(fields: [provider_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_sync_lock {
+  id                    String              @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_integration_id String?             @unique @db.Uuid
+  locked_at             DateTime?           @db.Timestamptz(6)
+  expires_at            DateTime?           @db.Timestamptz(6)
+  worker_id             String?             @db.VarChar
+  created_at            DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime            @default(now()) @db.Timestamptz(6)
+  tenant_integration    tenant_integration? @relation(fields: [tenant_integration_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_task_queue {
+  id            BigInt    @id @default(autoincrement())
+  tenant_id     String?   @db.Uuid
+  task_type     String?   @db.VarChar
+  priority      Int?      @default(0)
+  payload       Json?
+  status        String?   @db.VarChar
+  scheduled_for DateTime? @db.Timestamptz(6)
+  processed_at  DateTime? @db.Timestamptz(6)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime  @default(now()) @db.Timestamptz(6)
+  tenant        tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_transformation_template {
+  id                   String                @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  provider_id          String?               @db.Uuid
+  direction            String?               @db.VarChar
+  template_body        String?
+  version              String?               @db.VarChar
+  created_at           DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime              @default(now()) @db.Timestamptz(6)
+  integration_provider integration_provider? @relation(fields: [provider_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_usage_meter {
+  id                 BigInt              @id @default(autoincrement())
+  tenant_id          String?             @db.Uuid
+  integration_id     String?             @db.Uuid
+  billing_period     String?             @db.VarChar
+  request_count      Int?                @default(0)
+  credits_consumed   Decimal?            @default(0) @db.Decimal
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime            @default(now()) @db.Timestamptz(6)
+  tenant_integration tenant_integration? @relation(fields: [integration_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant             tenant?             @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview {
+  id                           String                         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  loop_id                      String?                        @db.Uuid
+  workflow_status_id           Int?
+  template_id                  String?                        @db.Uuid
+  interview_type_id            String?                        @db.Uuid
+  meeting_link                 String?                        @db.VarChar
+  created_at                   DateTime                       @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime                       @default(now()) @db.Timestamptz(6)
+  scheduled_start              DateTime?                      @db.Timestamptz(6)
+  scheduled_end                DateTime?                      @db.Timestamptz(6)
+  interview_type               interview_type?                @relation(fields: [interview_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_loop               interview_loop?                @relation(fields: [loop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_feedback_template  interview_feedback_template?   @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_status              workflow_status?               @relation(fields: [workflow_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_panel              interview_panel[]
+  interview_reschedule_history interview_reschedule_history[]
+  interview_score              interview_score[]
+}
+
+model interview_attachment {
+  id                    String              @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  interview_schedule_id String?             @db.Uuid
+  doc_id                String?             @db.Uuid
+  created_at            DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime            @default(now()) @db.Timestamptz(6)
+  job_document          job_document?       @relation(fields: [doc_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_schedule    interview_schedule? @relation(fields: [interview_schedule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_availability {
+  id              String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  app_user_id     String?   @db.Uuid
+  start_time      DateTime? @db.Timestamptz(6)
+  end_time        DateTime? @db.Timestamptz(6)
+  is_recurring    Boolean?
+  recurrence_rule String?   @db.VarChar
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+  app_user        app_user? @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_calendar_sync {
+  id                   String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  app_user_id          String?   @db.Uuid
+  external_calendar_id String?   @db.VarChar
+  provider             String?   @db.VarChar
+  sync_token           String?   @db.VarChar
+  created_at           DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime  @default(now()) @db.Timestamptz(6)
+  app_user             app_user? @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_evaluation_criteria {
+  id                String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  interview_type_id String?         @db.Uuid
+  criterion_name    String?         @db.VarChar
+  weight            Decimal?        @db.Decimal
+  created_at        DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime        @default(now()) @db.Timestamptz(6)
+  interview_type    interview_type? @relation(fields: [interview_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_feedback {
+  id                          String                       @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  interview_schedule_id       String?                      @db.Uuid
+  interviewer_id              String?                      @db.Uuid
+  template_id                 String?                      @db.Uuid
+  rating                      Decimal?                     @db.Decimal
+  recommendation              String?                      @db.VarChar
+  comments                    String?
+  submitted_at                DateTime?                    @db.Timestamptz(6)
+  created_at                  DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime                     @default(now()) @db.Timestamptz(6)
+  interview_schedule          interview_schedule?          @relation(fields: [interview_schedule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interviewer                 interviewer?                 @relation(fields: [interviewer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_feedback_template interview_feedback_template? @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_scorecard         interview_scorecard[]
+}
+
+model interview_feedback_template {
+  id                 String               @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id          String?              @db.Uuid
+  name               String?              @db.VarChar
+  sections_json      Json?
+  questions          Json?
+  interview          interview[]
+  interview_feedback interview_feedback[]
+  tenant             tenant?              @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_panel {
+  id                     String                   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  interview_id           String?                  @db.Uuid
+  interview              interview?               @relation(fields: [interview_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_panel_member interview_panel_member[]
+  interviewer_assignment interviewer_assignment[]
+}
+
+model interview_panel_member {
+  id              String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  panel_id        String?          @db.Uuid
+  app_user_id     String?          @db.Uuid
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime         @default(now()) @db.Timestamptz(6)
+  app_user        app_user?        @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_panel interview_panel? @relation(fields: [panel_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_reschedule_history {
+  id                 String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  interview_id       String?    @db.Uuid
+  old_start          DateTime?  @db.Timestamptz(6)
+  new_start          DateTime?  @db.Timestamptz(6)
+  changed_by_user_id String?    @db.Uuid
+  created_at         DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime   @default(now()) @db.Timestamptz(6)
+  app_user           app_user?  @relation(fields: [changed_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview          interview? @relation(fields: [interview_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_reschedule_log {
+  id                    String              @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  interview_schedule_id String?             @db.Uuid
+  previous_start_time   DateTime?           @db.Timestamptz(6)
+  previous_end_time     DateTime?           @db.Timestamptz(6)
+  reason                String?
+  changed_by_user_id    String?             @db.Uuid
+  created_at            DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime            @default(now()) @db.Timestamptz(6)
+  app_user              app_user?           @relation(fields: [changed_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_schedule    interview_schedule? @relation(fields: [interview_schedule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_room {
+  id                 String               @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id          String?              @db.Uuid
+  name               String?              @db.VarChar
+  capacity           Int?
+  location_detail    String?
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  tenant             tenant?              @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_schedule interview_schedule[]
+}
+
+model interview_round {
+  id                 String               @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  application_id     String?              @db.Uuid
+  round_number       Int?
+  workflow_stage_id  Int?
+  status             String?              @db.VarChar
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  application        application?         @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_stage     workflow_stage?      @relation(fields: [workflow_stage_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_schedule interview_schedule[]
+}
+
+model interview_schedule {
+  id                       String                     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  interview_round_id       String?                    @db.Uuid
+  interview_type_id        String?                    @db.Uuid
+  start_time               DateTime?                  @db.Timestamptz(6)
+  end_time                 DateTime?                  @db.Timestamptz(6)
+  timezone                 String?                    @db.VarChar
+  location_type            String?                    @db.VarChar
+  meeting_link             String?                    @db.VarChar
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  room_id                  String?                    @db.Uuid
+  status                   String?                    @db.VarChar
+  interview_attachment     interview_attachment[]
+  interview_feedback       interview_feedback[]
+  interview_reschedule_log interview_reschedule_log[]
+  interview_round          interview_round?           @relation(fields: [interview_round_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_type           interview_type?            @relation(fields: [interview_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_room           interview_room?            @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interviewer              interviewer[]
+}
+
+model interview_score {
+  id                 String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  interview_id       String?    @db.Uuid
+  app_user_id        String?    @db.Uuid
+  interview_rating   Int?
+  feedback_encrypted String?
+  app_user           app_user?  @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview          interview? @relation(fields: [interview_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_scorecard {
+  id                    String              @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  interview_feedback_id String?             @db.Uuid
+  scores_json           Json?
+  overall_score         Decimal?            @db.Decimal
+  interview_feedback    interview_feedback? @relation(fields: [interview_feedback_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_type {
+  id                            String                          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id                     String?                         @db.Uuid
+  name                          String?                         @db.VarChar
+  created_at                    DateTime                        @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime                        @default(now()) @db.Timestamptz(6)
+  default_duration_minutes      Int?
+  interview                     interview[]
+  interview_evaluation_criteria interview_evaluation_criteria[]
+  interview_schedule            interview_schedule[]
+  tenant                        tenant?                         @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interviewer_assignment {
+  id              String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  panel_id        String?          @db.Uuid
+  app_user_id     String?          @db.Uuid
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime         @default(now()) @db.Timestamptz(6)
+  app_user        app_user?        @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_panel interview_panel? @relation(fields: [panel_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model job {
+  id              String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id       String?          @db.Uuid
+  department_id   String?          @db.Uuid
+  job_status_id   String?          @db.Uuid
+  workflow_id     Int?
+  title           String?          @db.VarChar
+  visibility      String?          @db.VarChar
+  metadata        Json?
+  is_featured     Boolean          @default(false)
+  is_deleted      Boolean?
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime         @default(now()) @db.Timestamptz(6)
+  department      department?      @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_status      job_status?      @relation(fields: [job_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant          tenant?          @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  hiring_workflow hiring_workflow? @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model job_board_posting {
+  id                   String              @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  job_id               String?             @db.Uuid
+  board_id             String?             @db.Uuid
+  external_job_id      String?             @db.VarChar
+  external_listing_url String?             @db.VarChar
+  posting_status       String?             @db.VarChar
+  error_detail         String?
+  posted_at            DateTime?           @db.Timestamptz(6)
+  expires_at           DateTime?           @db.Timestamptz(6)
+  last_sync_at         DateTime?           @db.Timestamptz(6)
+  created_at           DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime            @default(now()) @db.Timestamptz(6)
+  external_job_board   external_job_board? @relation(fields: [board_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model job_category {
+  id                                                                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                                                               String                   @unique(map: "idx_cat_name_unique") @db.VarChar
+  is_custom                                                          Boolean?                 @default(false)
+  job_category_map_job_category_map_category_idTojob_category        job_category_map[]       @relation("job_category_map_category_idTojob_category")
+  job_category_map_job_category_map_parent_category_idTojob_category job_category_map[]       @relation("job_category_map_parent_category_idTojob_category")
+  job_category_selection                                             job_category_selection[]
+  job_template                                                       job_template[]
+}
+
+model job_category_map {
+  id                                                             String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  job_id                                                         String?       @db.Uuid
+  category_id                                                    String?       @db.Uuid
+  parent_category_id                                             String?       @db.Uuid
+  job_category_job_category_map_category_idTojob_category        job_category? @relation("job_category_map_category_idTojob_category", fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_category_job_category_map_parent_category_idTojob_category job_category? @relation("job_category_map_parent_category_idTojob_category", fields: [parent_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([job_id, category_id], map: "idx_unique_job_category")
+  @@index([category_id], map: "idx_map_category")
+  @@index([job_id], map: "idx_map_job")
+  @@index([parent_category_id], map: "idx_map_parent_category")
+}
+
+model job_category_selection {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_id             String?       @db.Uuid
+  category_id        String?       @db.Uuid
+  created_at         DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime      @default(now()) @db.Timestamptz(6)
+  updated_by_user_id String?       @db.Uuid
+  job_category       job_category? @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user           app_user?     @relation(fields: [updated_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([job_id, category_id], map: "idx_unique_job_cat_selection")
+  @@index([category_id], map: "idx_selection_category_lookup")
+}
+
+model job_class {
+  id              String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  class_number    String        @unique(map: "job_class_class_number_idx") @db.VarChar
+  name            String        @db.VarChar
+  job_function_id String?       @db.Uuid
+  description     String?
+  is_active       Boolean?      @default(true)
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  job_function    job_function? @relation(fields: [job_function_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_detail      job_detail[]  @relation("job_class_rel")
+
+  @@index([class_number, name])
+  @@index([is_active])
+  @@index([job_function_id])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model job_detail {
+  id                           String        @id(map: "job_detail_pkey1") @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  job_id                       String?       @unique(map: "job_detail_job_id_key1") @db.Uuid
+  job_number                   String?       @db.VarChar
+  job_title                    String?       @db.VarChar
+  opening_date                 DateTime?     @db.Date
+  closing_date                 DateTime?     @db.Date
+  review_date                  DateTime?     @db.Date
+  job_function_id              String?       @db.Uuid
+  custom_job_function          String?       @db.VarChar
+  job_class_id                 String?       @db.Uuid
+  custom_job_class             String?       @db.VarChar
+  job_type_id                  Int?
+  work_site_id                 Int?
+  job_level_id                 Int?
+  compensation_type            String?       @db.VarChar
+  min_pay                      Decimal?      @db.Decimal(12, 2)
+  max_pay                      Decimal?      @db.Decimal(12, 2)
+  description                  String?
+  requirements                 String?
+  benefits                     String?
+  minimum_qualifications       String?
+  scoring_criteria             String?
+  job_class                    String?       @db.VarChar
+  union_code                   String?       @db.VarChar
+  pay_grade                    String?       @db.VarChar
+  education_id                 String?       @db.Uuid
+  civil_service_classification String?       @db.VarChar
+  civil_service_exam_required  Boolean?
+  veteran_preference_eligible  Boolean?
+  references_required          Boolean?
+  drivers_license_required     Boolean?
+  flsa_status                  String?       @db.VarChar
+  created_at                   DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime      @default(now()) @db.Timestamptz(6)
+  education                    education?    @relation(fields: [education_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_job_detail_education")
+  jobClass                     job_class?    @relation("job_class_rel", fields: [job_class_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "job_detail_job_class_id_fkey1")
+  job_function                 job_function? @relation(fields: [job_function_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "job_detail_job_function_id_fkey1")
+  job_level                    job_level?    @relation(fields: [job_level_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "job_detail_job_level_id_fkey1")
+  job_type                     job_type?     @relation(fields: [job_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "job_detail_job_type_id_fkey1")
+  work_site                    work_site?    @relation(fields: [work_site_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "job_detail_work_site_id_fkey1")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model job_document {
+  id                     String                   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id              String?                  @db.Uuid
+  current_blob_uri       String?                  @db.VarChar
+  job_id                 String?                  @db.Uuid
+  candidate_profile_id   String?                  @db.Uuid
+  document_category      String?                  @db.VarChar
+  file_name              String?                  @db.VarChar
+  current_version_num    Int?
+  is_primary             Boolean?
+  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  uploaded_by            String?                  @db.Uuid
+  application_attachment application_attachment[]
+  interview_attachment   interview_attachment[]
+  tenant                 tenant?                  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user               app_user?                @relation(fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_document_version   job_document_version[]
+  resume_parse_event     resume_parse_event[]
+}
+
+model job_document_parse_result {
+  id                   String                @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  version_id           String?               @db.Uuid
+  parsed_data          Json?
+  confidence           Float?
+  parse_status         String?               @db.VarChar
+  error_reason         String?               @db.VarChar
+  model_version        String?               @db.VarChar
+  created_at           DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime              @default(now()) @db.Timestamptz(6)
+  job_document_version job_document_version? @relation(fields: [version_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model job_document_version {
+  id                        String                      @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  doc_id                    String?                     @db.Uuid
+  version_num               Int?
+  blob_uri                  String?                     @db.VarChar
+  file_hash                 String?                     @db.VarChar
+  file_type                 String?                     @db.VarChar
+  file_size                 Int?
+  ocr_used                  Boolean?
+  document_language         String?                     @db.VarChar
+  created_at                DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime                    @default(now()) @db.Timestamptz(6)
+  change_summary            String?
+  job_document_parse_result job_document_parse_result[]
+  job_document              job_document?               @relation(fields: [doc_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model job_function {
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id               String?                   @db.Uuid
+  name                    String?                   @db.VarChar
+  is_custom               Boolean?                  @default(false)
+  is_active               Boolean?                  @default(true)
+  job_class               job_class[]
+  job_detail              job_detail[]
+  tenant                  tenant?                   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_function_map        job_function_map[]
+  job_function_selection  job_function_selection[]
+  job_function_suggestion job_function_suggestion[]
+  job_template            job_template[]
+
+  @@unique([tenant_id, name], map: "idx_tenant_function_name")
+  @@index([tenant_id], map: "idx_function_tenant_owner")
+}
+
+model job_function_map {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_id       String?       @db.Uuid
+  function_id  String?       @db.Uuid
+  created_at   DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime      @default(now()) @db.Timestamptz(6)
+  job_function job_function? @relation(fields: [function_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([job_id, function_id], map: "idx_unique_job_function")
+  @@index([function_id], map: "idx_map_function_lookup")
+}
+
+model job_function_selection {
+  id                 String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  job_id             String?       @db.Uuid
+  function_id        String?       @db.Uuid
+  created_at         DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime      @default(now()) @db.Timestamptz(6)
+  updated_by_user_id String?       @db.Uuid
+  job_function       job_function? @relation(fields: [function_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user           app_user?     @relation(fields: [updated_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model job_function_suggestion {
+  id               String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  job_id           String?       @db.Uuid
+  function_id      String?       @db.Uuid
+  confidence_score Float?
+  model_version    String?       @db.VarChar
+  job_function     job_function? @relation(fields: [function_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([job_id, confidence_score], map: "idx_suggestion_rank")
+}
+
+model job_level {
+  id         Int          @id @default(autoincrement())
+  name       String?      @db.VarChar
+  job_detail job_detail[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model job_location {
+  id                                    String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  job_id                                String?  @db.Uuid
+  location_type                         String?  @db.VarChar
+  zip_geo                               String?  @db.VarChar
+  address                               String?  @db.VarChar
+  zip_geo_job_location_zip_geoTozip_geo zip_geo? @relation("job_location_zip_geoTozip_geo", fields: [zip_geo], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([job_id], map: "idx_job_loc_id")
+  @@index([zip_geo], map: "idx_job_loc_zip")
+}
+
+model job_question {
+  id                 String               @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  job_id             String?              @db.Uuid
+  tenant_id          String?              @db.Uuid
+  question_text      String?
+  input_type         String?              @db.VarChar
+  category           String?              @db.VarChar
+  order_index        Int?
+  form_options       Json?
+  is_required        Boolean?
+  source_type        String?              @db.VarChar
+  source_doc_id      String?              @db.Uuid
+  is_deleted         Boolean?
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  application_answer application_answer[]
+  tenant             tenant?              @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model job_status {
+  id          String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name        String? @db.VarChar
+  order_index Int?
+  job         job[]
+}
+
+model job_template {
+  id                 String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id          String        @db.Uuid
+  created_by_user_id String        @db.Uuid
+  name               String        @db.VarChar
+  job_number         String?       @db.VarChar
+  class_number       String?       @db.VarChar
+  description        String?
+  source_job_id      String?       @db.Uuid
+  department_id      String?       @db.Uuid
+  job_function_id    String?       @db.Uuid
+  job_category_id    String?       @db.Uuid
+  is_active          Boolean?      @default(true)
+  created_at         DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime      @default(now()) @db.Timestamptz(6)
+  app_user           app_user      @relation(fields: [created_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department         department?   @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_category       job_category? @relation(fields: [job_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_function       job_function? @relation(fields: [job_function_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant             tenant        @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([tenant_id, name], map: "job_template_tenant_id_name_idx")
+  @@index([class_number])
+  @@index([job_number])
+}
+
+model job_type {
+  id         Int          @id @default(autoincrement())
+  name       String?      @db.VarChar
+  job_detail job_detail[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model job_vector {
+  id           String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  job_id       String?   @db.Uuid
+  embedding    String?   @db.VarChar
+  model_id     String?   @db.VarChar
+  generated_at DateTime? @db.Timestamptz(6)
+}
+
+model job_version {
+  id          String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  job_id      String? @db.Uuid
+  snapshot    Json?
+  version_num Int?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model login_attempt {
+  id          BigInt    @id
+  app_user_id String?   @db.Uuid
+  tenant_id   String?   @db.Uuid
+  ip_address  String?   @db.Inet
+  user_agent  String?
+  success     Boolean?
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @default(now()) @db.Timestamptz(6)
+  app_user    app_user? @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant      tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model login_session {
+  id             String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  app_user_id    String?          @db.Uuid
+  ip_hash        String?          @db.Inet
+  user_agent     String?
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime         @default(now()) @db.Timestamptz(6)
+  expires_at     DateTime         @db.Timestamptz(6)
+  revoked_at     DateTime?        @db.Timestamptz(6)
+  is_active      Boolean?         @default(true)
+  auth_event_log auth_event_log[]
+  app_user       app_user?        @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model marketplace_extension {
+  id                      String                @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  provider_id             String?               @db.Uuid
+  name                    String?               @db.VarChar
+  slug                    String?               @unique @db.VarChar
+  description             String?
+  developer_name          String?               @db.VarChar
+  developer_contact_email String?               @db.VarChar
+  permissions_required    Json?
+  is_verified             Boolean?              @default(false)
+  average_rating          Decimal?              @db.Decimal
+  created_at              DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime              @default(now()) @db.Timestamptz(6)
+  integration_provider    integration_provider? @relation(fields: [provider_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model mfa_config {
+  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  app_user_id String?   @db.Uuid
+  type        String?   @db.VarChar
+  is_enabled  Boolean?
+  app_user    app_user? @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model notification_log {
+  id                String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id         String?   @db.Uuid
+  recipient_user_id String?   @db.Uuid
+  notification_type String?   @db.VarChar
+  subject           String?   @db.VarChar
+  content_summary   String?
+  status            String?   @db.VarChar
+  error_detail      String?
+  sent_at           DateTime? @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
+  app_user          app_user? @relation(fields: [recipient_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant            tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model oauth_connection {
+  id                      String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  app_user_id             String?   @db.Uuid
+  tenant_id               String?   @db.Uuid
+  provider_name           String?   @db.VarChar
+  access_token_encrypted  String?
+  refresh_token_encrypted String?
+  scopes                  String?
+  token_type              String?   @default("Bearer") @db.VarChar
+  expires_at              DateTime? @db.Timestamptz(6)
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @default(now()) @db.Timestamptz(6)
+  app_user                app_user? @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant                  tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model offer {
+  id                    String                  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  application_id        String?                 @db.Uuid
+  status                String?
+  base_salary           Decimal?                @db.Decimal
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  application           application?            @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  offer_approval_record offer_approval_record[]
+}
+
+model offer_approval_record {
+  id               Int       @id
+  offer_id         String?   @db.Uuid
+  approver_role_id Int?
+  status           String?
+  approved_by      String?   @db.Uuid
+  approved_at      DateTime? @db.Timestamptz(6)
+  requested_at     DateTime? @default(now()) @db.Timestamptz(6)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  app_user         app_user? @relation(fields: [approved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  offer            offer?    @relation(fields: [offer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model password_reset_token {
+  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  app_user_id String?   @db.Uuid
+  tenant_id   String?   @db.Uuid
+  token_hash  String?   @db.VarChar
+  expires_at  DateTime? @db.Timestamptz(6)
+  used        Boolean?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  app_user    app_user? @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant      tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model payment {
+  id                      String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  invoice_id              String?         @db.Uuid
+  amount                  Decimal?        @db.Decimal
+  currency_code           String?         @db.Char(3)
+  status                  String?         @db.VarChar
+  paid_at                 DateTime?       @db.Timestamptz(6)
+  provider                String?         @db.VarChar
+  payment_method_type     String?         @db.VarChar
+  provider_payment_id     String?         @db.VarChar
+  provider_transaction_id String?         @db.VarChar
+  refunded_amount         Decimal?        @db.Decimal
+  chargeback_amount       Decimal?        @db.Decimal
+  failure_code            String?         @db.VarChar
+  failure_message         String?
+  metadata                Json?
+  reference_number        String?         @db.VarChar
+  created_at              DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime        @default(now()) @db.Timestamptz(6)
+  chargeback              chargeback[]
+  invoice                 invoice?        @relation(fields: [invoice_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payment_event           payment_event[]
+  refund                  refund[]
+
+  @@index([invoice_id])
+  @@index([provider_payment_id])
+  @@index([status])
+}
+
+model permission {
+  id                   String                 @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id            String?                @db.Uuid
+  action_slug          String?                @db.VarChar
+  tenant               tenant?                @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  permission_group_map permission_group_map[]
+  role_permission      role_permission[]
+}
+
+model permission_group {
+  id                   String                 @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id            String?                @db.Uuid
+  name                 String?                @db.VarChar
+  description          String?
+  tenant               tenant?                @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  permission_group_map permission_group_map[]
+}
+
+model permission_group_map {
+  id               String            @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  group_id         String?           @db.Uuid
+  permission_id    String?           @db.Uuid
+  permission_group permission_group? @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  permission       permission?       @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model person {
+  id                    String                  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id             String?                 @db.Uuid
+  first_name            String?                 @db.VarChar
+  last_name             String?                 @db.VarChar
+  email                 String?                 @db.VarChar
+  phone                 String?                 @db.VarChar
+  person_type           String?                 @db.VarChar
+  created_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  address               address[]
+  app_user              app_user[]
+  candidate_consent_log candidate_consent_log[]
+  candidate_profile     candidate_profile[]
+  tenant                tenant?                 @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  person_identifier     person_identifier[]
+  resume_parse_event    resume_parse_event[]
+  tenant_candidate      tenant_candidate[]
+}
+
+model person_identifier {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  person_id  String?  @db.Uuid
+  type       String?  @db.VarChar
+  value      String?  @db.VarChar
+  is_primary Boolean?
+  person     person?  @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model profile_clone_log {
+  id                                                                       BigInt             @id @default(autoincrement())
+  source_profile_id                                                        String?            @db.Uuid
+  new_profile_id                                                           String?            @db.Uuid
+  cloned_by_app_user_id                                                    String?            @db.Uuid
+  cloned_at                                                                DateTime?          @db.Timestamptz(6)
+  app_user                                                                 app_user?          @relation(fields: [cloned_by_app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  candidate_profile_profile_clone_log_new_profile_idTocandidate_profile    candidate_profile? @relation("profile_clone_log_new_profile_idTocandidate_profile", fields: [new_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  candidate_profile_profile_clone_log_source_profile_idTocandidate_profile candidate_profile? @relation("profile_clone_log_source_profile_idTocandidate_profile", fields: [source_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model provider_entitlement {
+  id                   String                @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  provider_id          String?               @db.Uuid
+  min_billing_tier     String?               @db.VarChar
+  is_beta_only         Boolean?              @default(false)
+  integration_provider integration_provider? @relation(fields: [provider_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model resume_parse_event {
+  id                  String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  person_id           String?       @db.Uuid
+  document_id         String?       @db.Uuid
+  overwrite_confirmed Boolean?
+  fields_overwritten  Json?
+  parsed_at           DateTime?     @db.Timestamptz(6)
+  parsed_by           String?       @db.VarChar
+  checksum            String?       @db.VarChar
+  job_document        job_document? @relation(fields: [document_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  person              person?       @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model role {
+  id              String            @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id       String?           @db.Uuid
+  name            String?           @db.VarChar
+  is_system_role  Boolean?
+  parent_role_id  String?           @db.Uuid
+  role            role?             @relation("roleTorole", fields: [parent_role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_role      role[]            @relation("roleTorole")
+  tenant          tenant?           @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role_permission role_permission[]
+  user_role       user_role[]
+}
+
+model role_permission {
+  id            String      @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  role_id       String?     @db.Uuid
+  permission_id String?     @db.Uuid
+  permission    permission? @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role          role?       @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model search_audit {
+  id                                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                               String?   @db.Uuid
+  search_query                          String?   @db.VarChar
+  zip_geo                               String?   @db.VarChar
+  radius_miles                          Int?
+  results_count                         Int?
+  session_id                            String?   @db.Uuid
+  created_at                            DateTime? @default(now()) @db.Timestamptz(6)
+  app_user                              app_user? @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  zip_geo_search_audit_zip_geoTozip_geo zip_geo?  @relation("search_audit_zip_geoTozip_geo", fields: [zip_geo], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([radius_miles], map: "idx_audit_common_radius")
+  @@index([zip_geo, radius_miles], map: "idx_audit_location_trends")
+  @@index([zip_geo], map: "idx_audit_popular_zips")
+  @@index([created_at], map: "idx_audit_time_series")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model sensitive_access_log {
+  id                Int                @id @default(autoincrement())
+  tenant_id         String?            @db.Uuid
+  app_user_id       String?            @db.Uuid
+  candidate_id      String?            @db.Uuid
+  access_reason     String?
+  accessed_fields   Json?
+  occurred_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  app_user          app_user?          @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  candidate_profile candidate_profile? @relation(fields: [candidate_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant            tenant?            @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
+
+model state_province {
+  id         Int         @id @default(autoincrement())
+  name       String      @db.VarChar
+  full_name  String?     @db.VarChar(50)
+  country_id String      @db.VarChar(3)
+  area_code  area_code[]
+  city       city[]
+  county     county[]
+  country    country     @relation(fields: [country_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  zip_geo    zip_geo[]
+
+  @@index([country_id, name])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model system_event {
+  id             String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id      String?  @db.Uuid
+  event_type     String?  @db.VarChar
+  severity       String?  @db.VarChar
+  payload        Json?
+  source_service String?  @db.VarChar
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime @default(now()) @db.Timestamptz(6)
+  tenant         tenant?  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model tax_record {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  invoice_id String?  @db.Uuid
+  tax_rate   Decimal? @db.Decimal
+  tax_amount Decimal? @db.Decimal
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  invoice    invoice? @relation(fields: [invoice_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([invoice_id])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model tenant {
+  id                          String                        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_status_id            String?                       @db.Uuid
+  name                        String?                       @db.VarChar
+  slug                        String?                       @unique(map: "idx_tenant_slug") @db.VarChar
+  default_timezone            String?                       @db.VarChar
+  default_currency_code       String?                       @db.VarChar
+  is_deleted                  Boolean?                      @default(false)
+  created_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  tenant_logo_url             String?                       @db.VarChar
+  tenant_description          String?
+  ai_evaluation_run           ai_evaluation_run[]
+  ai_inference_log            ai_inference_log[]
+  api_key                     api_key[]
+  app_user                    app_user[]
+  application                 application[]
+  audit_change_log            audit_change_log[]
+  auth_event_log              auth_event_log[]
+  billing_account             billing_account[]
+  candidate_consent_log       candidate_consent_log[]
+  candidate_profile           candidate_profile[]
+  candidate_status            candidate_status[]
+  data_export_log             data_export_log[]
+  department                  department[]
+  encryption_key_map          encryption_key_map[]
+  global_config               global_config[]
+  hiring_workflow             hiring_workflow[]
+  integration_audit_log       integration_audit_log[]
+  integration_entity_xref     integration_entity_xref[]
+  integration_task_queue      integration_task_queue[]
+  integration_usage_meter     integration_usage_meter[]
+  interview_feedback_template interview_feedback_template[]
+  interview_room              interview_room[]
+  interview_type              interview_type[]
+  job                         job[]
+  job_document                job_document[]
+  job_function                job_function[]
+  job_question                job_question[]
+  job_template                job_template[]
+  login_attempt               login_attempt[]
+  notification_log            notification_log[]
+  oauth_connection            oauth_connection[]
+  password_reset_token        password_reset_token[]
+  permission                  permission[]
+  permission_group            permission_group[]
+  person                      person[]
+  role                        role[]
+  sensitive_access_log        sensitive_access_log[]
+  system_event                system_event[]
+  tenant_status               tenant_status?                @relation(fields: [tenant_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant_branding             tenant_branding?
+  tenant_candidate            tenant_candidate[]
+  tenant_feature_flag         tenant_feature_flag[]
+  tenant_integration          tenant_integration[]
+  tenant_region               tenant_region[]
+  validation_profile          validation_profile[]
+  webhook_subscription        webhook_subscription[]
+
+  @@index([id], map: "idx_active_tenants")
+  @@index([name], map: "idx_tenant_name_search")
+  @@index([tenant_status_id], map: "idx_tenant_status_id")
+}
+
+model tenant_branding {
+  id                      String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id               String   @unique(map: "tenant_branding_tenant_id_idx") @db.Uuid
+  logo_url                String?  @db.VarChar
+  logo_width              Int?
+  logo_height             Int?
+  primary_color           String?  @db.VarChar(7)
+  secondary_color         String?  @db.VarChar(7)
+  header_background_color String?  @db.VarChar(7)
+  header_text_color       String?  @db.VarChar(7)
+  is_active               Boolean  @default(true)
+  created_at              DateTime @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime @default(now()) @db.Timestamptz(6)
+  tenant                  tenant   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model tenant_candidate {
+  id                     Int       @id @default(autoincrement())
+  tenant_id              String?   @db.Uuid
+  person_id              String?   @db.Uuid
+  status                 String?   @db.VarChar
+  source                 String?   @db.VarChar
+  created_at             DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime  @default(now()) @db.Timestamptz(6)
+  deleted_by_app_user_id String?   @db.Uuid
+  app_user               app_user? @relation(fields: [deleted_by_app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  person                 person?   @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant                 tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model tenant_feature_flag {
+  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id   String?   @db.Uuid
+  feature_key String?   @db.VarChar
+  is_enabled  Boolean?
+  enabled_at  DateTime? @db.Timestamptz(6)
+  tenant      tenant?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model tenant_integration {
+  id                      String                    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id               String?                   @db.Uuid
+  provider_id             String?                   @db.Uuid
+  config_json             Json?
+  is_enabled              Boolean?                  @default(true)
+  health_status           String?                   @db.VarChar
+  last_sync_at            DateTime?                 @db.Timestamptz(6)
+  last_error_message      String?
+  created_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  integration_audit_log   integration_audit_log[]
+  integration_entity_xref integration_entity_xref[]
+  integration_field_map   integration_field_map[]
+  integration_sync_lock   integration_sync_lock?
+  integration_usage_meter integration_usage_meter[]
+  integration_provider    integration_provider?     @relation(fields: [provider_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant                  tenant?                   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model tenant_region {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id   String?  @db.Uuid
+  region_code String?  @db.VarChar
+  is_primary  Boolean?
+  tenant      tenant?  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model tenant_status {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name        String?  @db.VarChar
+  order_index Int?
+  tenant      tenant[]
+}
+
+model user_preference {
+  id                                       String                 @id @db.Uuid
+  zip_geo                                  String?                @db.VarChar
+  default_radius_miles                     Int?                   @default(50)
+  skills_summary                           String?
+  resume_vector                            Unsupported("vector")?
+  job_alert_enabled                        Boolean?               @default(true)
+  created_at                               DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at                               DateTime               @default(now()) @db.Timestamptz(6)
+  app_user                                 app_user               @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  zip_geo_user_preference_zip_geoTozip_geo zip_geo?               @relation("user_preference_zip_geoTozip_geo", fields: [zip_geo], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model user_role {
+  id              String            @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  app_user_id     String?           @db.Uuid
+  role_id         String?           @db.Uuid
+  app_user        app_user?         @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role            role?             @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_role_scope user_role_scope[]
+}
+
+model user_role_scope {
+  id           String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  user_role_id String?    @db.Uuid
+  scope_type   String?    @db.VarChar
+  scope_ref_id String?    @db.Uuid
+  user_role    user_role? @relation(fields: [user_role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model user_status {
+  id       String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name     String?    @db.VarChar
+  app_user app_user[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model validation_profile {
+  id                  String            @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id           String?           @db.Uuid
+  candidate_status_id String?           @db.Uuid
+  enforcement_level   String?           @db.VarChar
+  name                String?           @db.VarChar
+  description         String?
+  validation_rules    Json?
+  failure_actions     Json?
+  is_active           Boolean?
+  version             Int?
+  created_at          DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime          @default(now()) @db.Timestamptz(6)
+  candidate_status    candidate_status? @relation(fields: [candidate_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant              tenant?           @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model webhook_delivery_log {
+  id                   BigInt                @id @default(autoincrement())
+  subscription_id      String?               @db.Uuid
+  event_id             String?               @db.Uuid
+  payload              Json?
+  request_headers      Json?
+  response_code        Int?
+  response_body        String?
+  duration_ms          Int?
+  status               String?               @db.VarChar
+  retry_count          Int?                  @default(0)
+  delivered_at         DateTime?             @db.Timestamptz(6)
+  created_at           DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime              @default(now()) @db.Timestamptz(6)
+  webhook_subscription webhook_subscription? @relation(fields: [subscription_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model webhook_retry_policy {
+  id                    String                @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  subscription_id       String?               @db.Uuid
+  retry_strategy        String?               @default("EXPONENTIAL_BACKOFF") @db.VarChar
+  max_attempts          Int?                  @default(5)
+  initial_delay_seconds Int?                  @default(30)
+  webhook_subscription  webhook_subscription? @relation(fields: [subscription_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model webhook_subscription {
+  id                   String                 @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id            String?                @db.Uuid
+  event_type           String?                @db.VarChar
+  target_url           String?                @db.VarChar
+  secret_token         String?                @db.VarChar
+  is_active            Boolean?               @default(true)
+  failure_count        Int?                   @default(0)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  webhook_delivery_log webhook_delivery_log[]
+  webhook_retry_policy webhook_retry_policy[]
+  tenant               tenant?                @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model work_site {
+  id         Int          @id @default(autoincrement())
+  name       String?      @db.VarChar
+  job_detail job_detail[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model workflow_stage {
+  id              Int               @id @default(autoincrement())
+  workflow_id     Int?
+  code            String?           @db.VarChar
+  display_order   Int?
+  is_mandatory    Boolean?          @default(false)
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @db.Timestamptz(6)
+  interview_loop  interview_loop[]
+  interview_round interview_round[]
+  hiring_workflow hiring_workflow?  @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_status workflow_status[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model workflow_status {
+  id                                                                                    Int                          @id @default(autoincrement())
+  workflow_stage_id                                                                     Int?
+  workflow_status_def_id                                                                Int?
+  display_order                                                                         Int?
+  is_terminal                                                                           Boolean?
+  entry_action_config                                                                   Json?
+  created_at                                                                            DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                                                                            DateTime                     @default(now()) @db.Timestamptz(6)
+  application                                                                           application[]
+  application_status_history                                                            application_status_history[]
+  interview                                                                             interview[]
+  workflow_stage                                                                        workflow_stage?              @relation(fields: [workflow_stage_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_status_def                                                                   workflow_status_def?         @relation(fields: [workflow_status_def_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_status_transition_workflow_status_transition_from_status_idToworkflow_status workflow_status_transition[] @relation("workflow_status_transition_from_status_idToworkflow_status")
+  workflow_status_transition_workflow_status_transition_to_status_idToworkflow_status   workflow_status_transition[] @relation("workflow_status_transition_to_status_idToworkflow_status")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model workflow_status_def {
+  id              Int               @id @default(autoincrement())
+  stage_code      String?           @db.VarChar
+  status_code     String?           @db.VarChar
+  description     String?
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @db.Timestamptz(6)
+  workflow_status workflow_status[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model workflow_status_transition {
+  id                                                                         Int              @id @default(autoincrement())
+  workflow_id                                                                Int?
+  from_status_id                                                             Int?
+  to_status_id                                                               Int?
+  is_allowed                                                                 Boolean?
+  trigger_type                                                               String?          @db.VarChar
+  rule_logic                                                                 String?
+  created_at                                                                 DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at                                                                 DateTime         @default(now()) @db.Timestamptz(6)
+  updated_by_user_id                                                         String?          @db.Uuid
+  workflow_status_workflow_status_transition_from_status_idToworkflow_status workflow_status? @relation("workflow_status_transition_from_status_idToworkflow_status", fields: [from_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_status_workflow_status_transition_to_status_idToworkflow_status   workflow_status? @relation("workflow_status_transition_to_status_idToworkflow_status", fields: [to_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_user                                                                   app_user?        @relation(fields: [updated_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  hiring_workflow                                                            hiring_workflow? @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model account_subscription {
+  id                String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  account_id        String?            @db.Uuid
+  plan_id           String?            @db.Uuid
+  started_at        DateTime?          @db.Timestamptz(6)
+  ended_at          DateTime?          @db.Timestamptz(6)
+  status            String?            @db.VarChar
+  created_at        DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime           @default(now()) @db.Timestamptz(6)
+  billing_account   billing_account?   @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subscription_plan subscription_plan? @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([account_id, status])
+  @@index([plan_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model billing_account {
+  id                   String                 @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  tenant_id            String?                @db.Uuid
+  stripe_customer_id   String?                @unique @db.VarChar
+  account_currency     String?                @db.VarChar
+  account_subscription account_subscription[]
+  tenant               tenant?                @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  billing_event        billing_event[]
+  invoice              invoice[]
+  payment_method       payment_method[]
+  usage_meter          usage_meter[]
+
+  @@index([stripe_customer_id])
+  @@index([tenant_id])
+}
+
+model billing_event {
+  id              String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  account_id      String?          @db.Uuid
+  event_type      String?          @db.VarChar
+  event_payload   Json?
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime         @default(now()) @db.Timestamptz(6)
+  occurred_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  billing_account billing_account? @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([account_id, occurred_at], map: "idx_billing_audit_log")
+}
+
+model chargeback {
+  id               String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  payment_id       String?            @db.Uuid
+  status           String?            @db.VarChar
+  reason_code      String?            @db.VarChar
+  disputed_amount  Decimal?           @db.Decimal
+  opened_at        DateTime?          @db.Timestamptz(6)
+  closed_at        DateTime?          @db.Timestamptz(6)
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @db.Timestamptz(6)
+  payment          payment?           @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  chargeback_event chargeback_event[]
+
+  @@index([payment_id])
+}
+
+model chargeback_event {
+  id                String      @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  chargeback_id     String?     @db.Uuid
+  event_type        String?     @db.VarChar
+  provider_event_id String?     @db.VarChar
+  raw_payload       Json?
+  created_at        DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime    @default(now()) @db.Timestamptz(6)
+  chargeback        chargeback? @relation(fields: [chargeback_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interview_loop {
+  id                String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  application_id    String?         @db.Uuid
+  workflow_stage_id Int?
+  loop_type         String?
+  sequence_order    Int?
+  created_at        DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime        @default(now()) @db.Timestamptz(6)
+  interview         interview[]
+  application       application?    @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_stage    workflow_stage? @relation(fields: [workflow_stage_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model interviewer {
+  id                    String               @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  interview_schedule_id String?              @db.Uuid
+  app_user_id           String?              @db.Uuid
+  is_lead               Boolean?
+  rsvp_status           String?              @db.VarChar
+  created_at            DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime             @default(now()) @db.Timestamptz(6)
+  interview_feedback    interview_feedback[]
+  app_user              app_user?            @relation(fields: [app_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interview_schedule    interview_schedule?  @relation(fields: [interview_schedule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model invoice {
+  id                   String                 @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  account_id           String?                @db.Uuid
+  total                Decimal?               @db.Decimal
+  currency_code        String?                @db.VarChar
+  due_date             DateTime?              @db.Timestamptz(6)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  billing_account      billing_account?       @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  invoice_line_item    invoice_line_item[]
+  payment              payment[]
+  proration_adjustment proration_adjustment[]
+  tax_record           tax_record[]
+
+  @@index([due_date], map: "idx_invoice_aging")
+  @@index([account_id, due_date], map: "idx_invoice_customer_history")
+}
+
+model invoice_line_item {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  invoice_id  String?  @db.Uuid
+  description String?  @db.VarChar
+  amount      Decimal? @db.Decimal
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+  invoice     invoice? @relation(fields: [invoice_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model payment_event {
+  id                String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  payment_id        String?   @db.Uuid
+  event_type        String?   @db.VarChar
+  provider_event_id String?   @unique @db.VarChar
+  raw_payload       Json?
+  processed_at      DateTime? @db.Timestamptz(6)
+  status            String?   @db.VarChar
+  source            String?   @db.VarChar
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
+  payment           payment?  @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([payment_id])
+  @@index([provider_event_id])
+}
+
+model payment_method {
+  id              String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  account_id      String?          @db.Uuid
+  method_type     String?          @db.VarChar
+  last4           String?          @db.VarChar
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime         @default(now()) @db.Timestamptz(6)
+  billing_account billing_account? @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([account_id])
+}
+
+model proration_adjustment {
+  id                String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  invoice_id        String?  @db.Uuid
+  adjustment_amount Decimal? @db.Decimal
+  reason            String?  @db.VarChar
+  invoice           invoice? @relation(fields: [invoice_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model refund {
+  id           String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  payment_id   String?        @db.Uuid
+  amount       Decimal?       @db.Decimal
+  status       String?        @db.VarChar
+  created_at   DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime       @default(now()) @db.Timestamptz(6)
+  payment      payment?       @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  refund_event refund_event[]
+
+  @@index([payment_id])
+}
+
+model refund_event {
+  id                String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  refund_id         String?  @db.Uuid
+  event_type        String?  @db.VarChar
+  provider_event_id String?  @db.VarChar
+  raw_payload       Json?
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+  refund            refund?  @relation(fields: [refund_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model subscription_plan {
+  id                   String                 @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name                 String?                @db.VarChar
+  price                Decimal?               @db.Decimal
+  currency_code        String?                @db.VarChar
+  features             Json?
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  account_subscription account_subscription[]
+}
+
+model usage_meter {
+  id              String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  account_id      String?          @db.Uuid
+  metric_name     String?          @db.VarChar
+  quantity        Decimal?         @db.Decimal
+  billing_account billing_account? @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([account_id, metric_name], map: "idx_usage_gate")
+}
+
+model zip_geo {
+  id                                               String                    @id @db.VarChar(10)
+  city_id                                          Int
+  state_id                                         Int
+  county_id                                        Int?
+  area_id                                          Int?
+  latitude                                         Decimal?                  @db.Decimal(8, 6)
+  longitude                                        Decimal?                  @db.Decimal(9, 6)
+  gmtOffset                                        String?                   @db.VarChar
+  gmtOffsetDST                                     String?                   @db.VarChar
+  dstObserved                                      String?                   @db.VarChar
+  location_geom                                    Unsupported("geography")?
+  job_location_job_location_zip_geoTozip_geo       job_location[]            @relation("job_location_zip_geoTozip_geo")
+  search_audit_search_audit_zip_geoTozip_geo       search_audit[]            @relation("search_audit_zip_geoTozip_geo")
+  user_preference_user_preference_zip_geoTozip_geo user_preference[]         @relation("user_preference_zip_geoTozip_geo")
+  area_code                                        area_code?                @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  city                                             city                      @relation(fields: [city_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  county                                           county?                   @relation(fields: [county_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  state_province                                   state_province            @relation(fields: [state_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([latitude, longitude], map: "idx_zip_coords")
+  @@index([city_id, state_id], map: "idx_zip_geo_lookup")
+  @@index([state_id, area_id], map: "idx_zip_state_area")
+  @@index([area_id])
+  @@index([county_id])
+  @@index([location_geom], type: Gist)
+  @@index([state_id])
+}
+
+model education {
+  id              String       @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  education_level String       @unique @db.VarChar
+  job_detail      job_detail[]
+}
+
+enum auth_event_type {
+  LOGIN_SUCCESS
+  LOGIN_FAIL
+  MFA_CHALLENGE
+  MFA_FAIL
+  LOGOUT
+}
+
+enum auth_status {
+  SUCCESS
+  FAILURE
+  CHALLENGE
+}

@@ -1,0 +1,25 @@
+{
+  "devFiles": [],
+  "ampDevFiles": [],
+  "polyfillFiles": [],
+  "lowPriorityFiles": [],
+  "rootMainFiles": [],
+  "pages": {
+    "/_error": [
+      "static/chunks/321e1_next_dist_compiled_1b2da169._.js",
+      "static/chunks/321e1_next_dist_shared_lib_43d8fce4._.js",
+      "static/chunks/321e1_next_dist_client_2bbd1c65._.js",
+      "static/chunks/321e1_next_dist_8b89cdef._.js",
+      "static/chunks/321e1_next_error_1fc44392.js",
+      "static/chunks/[next]_entry_page-loader_ts_a97a5868._.js",
+      "static/chunks/321e1_react_16fb42f2._.js",
+      "static/chunks/321e1_react-dom_cjs_react-dom_development_194d3fab.js",
+      "static/chunks/321e1_react-dom_41c39e87._.js",
+      "static/chunks/321e1_2f43df4c._.js",
+      "static/chunks/[root-of-the-server]__c413cc62._.js",
+      "static/chunks/projobs_pages__error_2da965e7._.js",
+      "static/chunks/turbopack-projobs_pages__error_10c19d65._.js"
+    ]
+  },
+  "ampFirstPages": []
+}

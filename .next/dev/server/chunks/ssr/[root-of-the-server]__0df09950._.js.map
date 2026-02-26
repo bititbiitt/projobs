@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 14, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/ILT/projobs/src/app/post-job/page.tsx"],"sourcesContent":["import PostJobForm from '@/components/postjob/PostJobForm';\r\n\r\nexport const metadata = {\r\n  title: 'Post Job - ProJobs',\r\n  description: 'Create a new job posting',\r\n};\r\n\r\nexport default function Page() {\r\n  return (\r\n    <main className=\"container mx-auto px-4 md:px-8 py-10\">\r\n      <PostJobForm />\r\n    </main>\r\n  );\r\n}\r\n"],"names":[],"mappings":";;;;;;;;;;;;;;AAEO,MAAM,WAAW;IACtB,OAAO;IACP,aAAa;AACf;AAEe,SAAS;IACtB,qBACE,yPAAC;QAAK,WAAU;kBACd,cAAA,yPAAC;;;;;;;;;;AAGP"}}]
+}

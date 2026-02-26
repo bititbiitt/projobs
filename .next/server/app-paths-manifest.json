@@ -1,0 +1,15 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/jobs/questions/batch/route": "app/api/jobs/questions/batch/route.js",
+  "/api/jobs/route": "app/api/jobs/route.js",
+  "/api/post-job/ocr-health/route": "app/api/post-job/ocr-health/route.js",
+  "/api/post-job/parse-doc/route": "app/api/post-job/parse-doc/route.js",
+  "/api/post-job/route": "app/api/post-job/route.js",
+  "/api/post-job/upload-doc/route": "app/api/post-job/upload-doc/route.js",
+  "/api/questions/upload/route": "app/api/questions/upload/route.js",
+  "/api/search/route": "app/api/search/route.js",
+  "/jobs/page": "app/jobs/page.js",
+  "/page": "app/page.js",
+  "/post-job/page": "app/post-job/page.js"
+}

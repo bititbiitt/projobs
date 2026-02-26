@@ -1,0 +1,11 @@
+var R=require("../../chunks/ssr/[turbopack]_runtime.js")("server/app/_not-found/page.js")
+R.c("server/chunks/ssr/321e1_next_dist_67ff61af._.js")
+R.c("server/chunks/ssr/[root-of-the-server]__c53e5be1._.js")
+R.c("server/chunks/ssr/321e1_next_dist_bb99eaa2._.js")
+R.c("server/chunks/ssr/[externals]__7f148858._.js")
+R.c("server/chunks/ssr/[root-of-the-server]__bb081e9c._.js")
+R.c("server/chunks/ssr/321e1_next_dist_client_components_ee763a66._.js")
+R.c("server/chunks/ssr/321e1_next_dist_client_components_builtin_forbidden_6281cdc0.js")
+R.c("server/chunks/ssr/projobs__next-internal_server_app__not-found_page_actions_d7ceae26.js")
+R.m("[project]/projobs/node_modules/next/dist/esm/build/templates/app-page.js?page=/_not-found/page { MODULE_0 => \"[project]/projobs/src/app/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)\", MODULE_1 => \"[project]/projobs/node_modules/next/dist/client/components/builtin/not-found.js [app-rsc] (ecmascript, Next.js Server Component)\", MODULE_2 => \"[project]/projobs/node_modules/next/dist/client/components/builtin/forbidden.js [app-rsc] (ecmascript, Next.js Server Component)\", MODULE_3 => \"[project]/projobs/node_modules/next/dist/client/components/builtin/unauthorized.js [app-rsc] (ecmascript, Next.js Server Component)\", MODULE_4 => \"[project]/projobs/node_modules/next/dist/client/components/builtin/not-found.js [app-rsc] (ecmascript, Next.js Server Component)\" } [app-rsc] (ecmascript)")
+module.exports=R.m("[project]/projobs/node_modules/next/dist/esm/build/templates/app-page.js?page=/_not-found/page { MODULE_0 => \"[project]/projobs/src/app/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)\", MODULE_1 => \"[project]/projobs/node_modules/next/dist/client/components/builtin/not-found.js [app-rsc] (ecmascript, Next.js Server Component)\", MODULE_2 => \"[project]/projobs/node_modules/next/dist/client/components/builtin/forbidden.js [app-rsc] (ecmascript, Next.js Server Component)\", MODULE_3 => \"[project]/projobs/node_modules/next/dist/client/components/builtin/unauthorized.js [app-rsc] (ecmascript, Next.js Server Component)\", MODULE_4 => \"[project]/projobs/node_modules/next/dist/client/components/builtin/not-found.js [app-rsc] (ecmascript, Next.js Server Component)\" } [app-rsc] (ecmascript)").exports
